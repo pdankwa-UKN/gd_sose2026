@@ -1,20 +1,67 @@
 DEMO   ENGLISH   CONFIG (1.0)
-  ROOTCAT   S.
-  FILES  .
+  ROOTCAT   ROOT.
+  FILES  common.templates.lfg.
   LEXENTRIES   (DEMO ENGLISH).
-  TEMPLATES (DEMO ENGLISH). 
+  TEMPLATES (DEMO ENGLISH)(STANDARD COMMON). 
   RULES   (DEMO ENGLISH).
   GOVERNABLERELATIONS    SUBJ OBJ OBJ2 COMP XCOMP OBL OBL-?+.
   SEMANTICFUNCTIONS    ADJUNCT  TOPIC FOCUS POSS STANDARD.
   NONDISTRIBUTIVES    NUM PERS CONJ-FORM.
   EPSILON   e.
   OPTIMALITYORDER NOGOOD PPadj +PPattach.
-  GENOPTIMALITYORDER NOGOOD NoPunct NoCapital NoPP +ActiveVoice +DObjBeforeOBLTO. 
+  GENOPTIMALITYORDER GenBadPunct NOGOOD +PUNCT CAPITAL.
 
 ----
 
 DEMO   ENGLISH   RULES (1.0)
 
+METARULEMACRO(_CAT _BASECAT _RHS) =
+{ 
+_RHS
+|"if it is an NP or an N, pass to NP coordination rule"
+e: _CAT $c { NP N };
+@(NPCOORD _CAT)
+|"if it is any other category, pass it to
+the same category coordination rule"
+e: _CAT ~$ { NP N };
+@(SCCOORD _CAT)
+|"allow bracketing around any category"
+LB: @(OT-MARK GenBadPunct); "preceding quote mark"
+"disprefer in generation"
+_CAT: @PUSHUP; "this pushes the quotes to the top
+to avoid vacuous ambiguity"
+RB "following quote mark"}.
+
+NPCOORD(_CAT) = "coordination of nominals"
+_CAT: @IN-SET "first nominal"
+@NP-CONJUNCT; "calls person resolution template"
+CONJnp: @PUSHUP; "conjunction"
+"PUSHUP avoids vacuous ambiguity in constructions
+where coordination can apply at different levels" 
+_CAT: @IN-SET "second nominal"
+@NP-CONJUNCT.
+
+SCCOORD(_CAT) = "coordination of non-nominals"
+"no features other than a COORD-FORM are provided to the 
+coordinated f-structure."
+_CAT: @IN-SET; "first constituent"
+(COMMA: @(OT-MARK GenBadPunct)) "optional comma; 
+disprefered in generation"
+CONJ: @PUSHUP; "conjunction"
+"PUSHUP avoids vacuous ambiguity." 
+_CAT: @IN-SET "second constituent".
+
+ ROOT --> { S
+             (PERIOD: @(OT-MARK Punct))
+              |
+              Simp
+             }.
+
+  Simp --> e: (^ SUBJ PRED) = 'pro'
+             (^ SUBJ PERS) = 2;
+         VP: (^ TENSE) ~= past;
+         EXCLAMATION. 
+       
 S --> NP: (^ SUBJ)=!
 	     (! CASE)=nom;
  	     VP: ^=!;
@@ -25,57 +72,63 @@ VP --> (AUX: ^=!)
  	  (NP: (^ OBJ)=!
 	       (! CASE)=acc)
        (NP: (^ OBJ2)=!)
-       PP*: { ! $ (^ ADJUNCT)
+       PP*: { ! $ (^ ADJUNCT) " $ -> this means -in the set of- "
                   (! PTYPE) =c sem
                   (! OBJ ANIM) =c +
-                  @(OT-MARK PPadj) 
-                  @(OT-MARK NoPP)  
+                  @(OT-MARK PPadj) "We have marked the Adjunct. This means that if the noun of the PP is animate e.g. dog, girl, bird etc, the Adjunct will be penalized and xle will choose the unmarked type of PP, which will be the OBL."
              |
                ! $ (^ ADJUNCT)
                  (! PTYPE) =c sem
                  (! OBJ ANIM) =c -
-                 @(OT-MARK NoPP) 
             |
                 (^ OBL) = !
-                @(OT-MARK PPadj)}; 
+                @(OT-MARK PPadj)}; "We have marked the OBL. This means that if the noun of the PP is inanimate e.g. chair, bench, bone etc, the OBL will be penalized and xle will choose the unmarked type of PP, which will be the Adjunct."
           (PP: (^ OBL-TO) = !)
           (PP: (^ OBL-AG) = !)
-          Adv*: ! $ (^ ADJUNCT).
+          { Adv*: ! $ (^ ADJUNCT)
+          | @(SCCOORD VP)
+          }.
 
-PP --> { P: ^ = ! 
-            (! PTYPE) =c sem;
-        NP: (^ OBJ) = !
-            (! CASE) = acc;
-            |
-        P: ^ = ! "head of PP" 
-           (! PTYPE) =c nosem;
-           NP:^=!}.
+   PP --> { P: ^ = !
+               (! PTYPE) =c sem; "semantic type, ADJUNCT"
+           NP: (^ OBJ) = !
+               (! CASE) = acc
+               |
+           P: ^ = !
+              (! PTYPE) =c nosem; "non-semantic type, OBL"
+           NP
+           | @(SCCOORD PP)
+           }.
 
-NP --> {({D
+
+   NP --> { 
+          ({D
           | PRON:
-            (^ SPEC POSS) = !})
-            "PRON: ^=!
-              (! PRON-TYPE) = poss})"
+              (^ SPEC POSS) = !
+              (^ SPEC POSS PRON-TYPE) =c poss})
            AP*: ! $ (^ ADJUNCT);
            N
            PP*: ! $ (^ ADJUNCT)
                     (! PTYPE) =c sem
                     @(OT-MARK PPadj)
            | PRON: ^=!
-              (! PRON-TYPE) = pers}.
+              (! PRON-TYPE) = pers
+           | @(NPCOORD NP)
+           }.
 
 
-AP --> AdvP*: ! $ (^ ADJUNCT);
+    AP --> AdvP*: ! $ (^ ADJUNCT);
            (COMMA)
            A.
 
-AdvP --> Adv*: ! $ (^ ADJUNCT);
+    AdvP --> Adv*: ! $ (^ ADJUNCT);
            (COMMA)
            Adv.
 
-PRON --> Pron: ^=!
+    PRON --> Pron: ^=!
                {(! PRON-TYPE) = pers
                |(! PRON-TYPE) = poss}.
+
 ----
 
 DEMO ENGLISH TEMPLATES (1.0)
@@ -166,6 +219,8 @@ DITRANS(P) = @(PASS @(DAT-SHIFT (^ PRED)='P<(^ SUBJ) (^ OBJ)
 LOC-TRANS(P) = @(PASS (^ PRED)='P<(^ SUBJ)(^ OBJ)(^ OBL)>')
                (^ OBL PTYPE) = nosem.
 
+"LOC-TRANS(P) = @(PASS (^ PRED)='P<(^ SUBJ)(^ OBJ)(^ OBL)>')"
+
 
 PREP(P) = { (^ PRED) = 'P<(^OBJ)>' 
             (^ PTYPE) = sem
@@ -194,6 +249,23 @@ PRON-POSS(P N C) = (^ DEF) = +
             (^ "SPEC POSS" PRON-TYPE) = poss
             (^ "SPEC POSS" ANIM) = +.
 
+NP-CONJUNCT = "provides person resolution features for 
+nominal coordination" 
+{ "if either conjunct is 1st person; the whole NP is"
+"EX: the boys and me}"
+(! PERS)=c 1
+(^ PERS)=1
+|"if a conjunct is 2nd person and the NP is not
+already 1st person, make it 2nd person"
+(! PERS)=c 2
+{ (^ PERS)=c 1 "one conjunct was 1st person"
+"EX: you and I}"
+|(^ PERS)=2 } "else assign 2nd person"
+"EX: you and the boys}"
+|"otherwise, the NP is 3rd person"
+"EX: the boys and her}"
+(^ PERS)=3}.
+
 ----
 
 DEMO ENGLISH LEXICON (1.0)
@@ -209,6 +281,14 @@ Sam   N * (^ PRED) = 'Sam'
               (^ ANIM) = +.
 
 Alex   N * (^ PRED) = 'Alex'
+              @3RD_PSG
+              (^ ANIM) = +.
+
+Mary   N * (^ PRED) = 'Mary'
+              @3RD_PSG
+              (^ ANIM) = +.
+
+Sophie   N * (^ PRED) = 'Sophie'
               @3RD_PSG
               (^ ANIM) = +.
 
@@ -228,6 +308,10 @@ boy   N * (^ PRED)='boy'
 
 boys   N * (^ PRED)='boy'
               @3RD_PPL
+              (^ ANIM) = +.
+
+child   N * (^ PRED) = 'child'
+              @3RD_PSG
               (^ ANIM) = +.
 
 zookeeper  N * (^ PRED)='zookeeper'
@@ -293,6 +377,18 @@ monkey   N * (^ PRED)='monkey'
 monkeys   N * (^ PRED) = 'monkey'
 	       @3RD_PPL
            (^ ANIM) = +.
+           
+leopards  N * (^ PRED) = 'leopard'
+              @3RD_PPL
+              (^ ANIM) = +.
+
+leopard   N * (^ PRED) = 'leopard'
+              @3RD_PSG
+              (^ ANIM) = +.
+
+robot   N * (^ PRED) = 'robot'
+              @3RD_PSG
+              (^ ANIM) = -.
 
 treat  N * (^ PRED)='treat'
               @CN
@@ -306,7 +402,11 @@ banana N * (^ PRED)= 'banana'
 
 bananas N * (^ PRED) = 'banana'
 	          @3RD_PPL
-              (^ ANIM) = -. 
+              (^ ANIM) = -.
+
+beans N * (^ PRED) = 'beans'
+	          @3RD_PPL
+              (^ ANIM) = -.
 
 cake 	  N * (^ PRED) = 'cake'
               @CN
@@ -367,6 +467,10 @@ garden  N * (^ PRED) = 'garden'
 hours 	  N * (^ PRED) = 'hour'
 	          @3RD_PPL
                (^ ANIM) = -.
+
+thought  N * (^ PRED) = 'thought'
+              @3RD_PSG
+              (^ ANIM) = -.
 
 
 "VERBS"
@@ -488,6 +592,10 @@ argued     V*
             @PAST
             @(OPT-TRANS argue).
 
+sleep     V*  @MOOD_IND
+            @ASP_SIMP
+            @PRESNON3SG 
+            @(OPT-TRANS sleep).
 
 slept     V* @MOOD_IND
              @PAST
@@ -509,8 +617,27 @@ gave     V* @MOOD_IND
             @PAST
             @(DITRANS give).
 
+Gave     V* @MOOD_IND
+            @ASP_SIMP
+            @PAST
+            @(DITRANS give).
+
 given    V*  (^ PARTICIPLE) = past
             @(DITRANS give).
+
+think    V*  @MOOD_IND
+            @ASP_SIMP
+            @PRESNON3SG 
+            @(OPT-TRANS think).
+
+
+educate   V * @MOOD_IND
+              @ASP_SIMP
+              @PRESNON3SG
+	          @(TRANS educate).
+
+educated    V* (^ PARTICIPLE) = past
+               @(TRANS educate).
 
 put  V* { @MOOD_IND
           @ASP_SIMP
@@ -527,6 +654,8 @@ put  V* { @MOOD_IND
 
 
 "Determiners"
+
+The  D *  (^ DEF) = +.
 
 the  D *  (^ DEF) = +.
 
@@ -548,6 +677,9 @@ in P * @(PREP in).
 
 with P * @(PREP with).
 
+for P * @(PREP for).
+
+from P * @(PREP from).
 
 "Adjectives"
 
@@ -558,6 +690,15 @@ black  A *  (^ PRED) = 'black'.
 
 hungry  A *  (^ PRED) = 'hungry'.
 
+bright A *  (^ PRED) = 'bright'.
+
+intelligent A *  (^ PRED) = 'intelligent'.
+
+efficient A *  (^ PRED) = 'efficient'.
+
+creative  A *  (^ PRED) = 'creative'.
+
+lazy  A *  (^ PRED) = 'lazy'.
 
 
 "Adverbs"
@@ -568,12 +709,19 @@ quickly  Adv *  (^ PRED) = 'quickly'.
 very  Adv *  (^ PRED) = 'very'.
 
 
+"Coordination"
+
+and  CONJ * @(COORD-FORM %stem);
+     CONJnp * @(COORD-FORM %stem) @(NUM pl).
+
 
 "Punctuation"
 
 ,   COMMA * .
 
 .   PERIOD * .
+
+!   EXCLAMATION * .
 
 
 

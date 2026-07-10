@@ -29,8 +29,8 @@ DEMO   ENGLISH   RULES (1.0)
 
  ROOT --> { S
              (PERIOD: @(OT-MARK Punct))
-              |
-              Simp
+              |Simp
+              |Stop
              }.
 
   Simp --> e: (^ SUBJ PRED) = 'pro'
@@ -43,6 +43,12 @@ S --> NP: (^ SUBJ)=!
 	     (! CASE)=nom;
  	     VP: ^=!;
          (PERIOD: @(OT-MARK NoPunct)).
+
+Stop --> NP: (^ TOPIC) = !
+             (^ {XCOMP|COMP}* {OBJ|OBJ2}) = !;
+         (COMMA)
+         S.
+GF = {SUBJ | OBJ | OBJ2 | COMP | XCOMP | OBL | OBL-TO | OBL-AG | ADJUNCT}.
 
 VP --> (AUX: ^=!)
           V: ^=!;
@@ -664,11 +670,12 @@ likes   V * @MOOD_IND
 chased    V* (^ PARTICIPLE) = past
              @(TRANS chase).
 
-eat     V*  @MOOD_IND
-            @ASP_SIMP
+eat     V*  @MOOD_IND 
+            @ASP_SIMP 
             @PRESNON3SG 
             @(OPT-TRANS eat);
-        V* @(OPT-TRANS eat);
+        V*  (^ VFORM) = inf
+            @(OPT-TRANS eat);
         V-S XLE @(OPT-TRANS eat); ETC.
 
 eats   V *  @MOOD_IND
@@ -1008,12 +1015,13 @@ want      V-S XLE { (^ PRED) = 'want<(^ SUBJ)(^ XCOMP)>'
 	       (^ SUBJ) = (^ XCOMP SUBJ)
 	      |(^ PRED) = 'want<(^ SUBJ)(^ OBJ)(^ XCOMP)>'
 	       (^ OBJ) = (^ XCOMP SUBJ)};
-          V* @MOOD_IND @ASP_SIMP @PRESNON3SG
+    V* @MOOD_IND @ASP_SIMP @PRESNON3SG
         { (^ PRED) = 'want<(^ SUBJ)(^ XCOMP)>'
 	       (^ SUBJ) = (^ XCOMP SUBJ)
 	      |(^ PRED) = 'want<(^ SUBJ)(^ OBJ)(^ XCOMP)>'
 	       (^ OBJ) = (^ XCOMP SUBJ)};
-          V* { (^ PRED) = 'want<(^ SUBJ)(^ XCOMP)>'
+        V*  (^ VFORM) = inf
+        { (^ PRED) = 'want<(^ SUBJ)(^ XCOMP)>'
 	       (^ SUBJ) = (^ XCOMP SUBJ)
 	      |(^ PRED) = 'want<(^ SUBJ)(^ OBJ)(^ XCOMP)>'
 	       (^ OBJ) = (^ XCOMP SUBJ)}.
